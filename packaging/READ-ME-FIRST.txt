@@ -1,13 +1,11 @@
 MAQAM - quarter-tone maqam MIDI plugin (AU + VST3)
 
 INSTALL
-  Right-click "Install-Maqam.command" > Open > Open.
-  (Right-click is needed the first time because the plugin is not signed by Apple.)
+  Double-click "Install Maqam.pkg" and follow the steps.
 
-  Or by hand: copy Maqam.component to ~/Library/Audio/Plug-Ins/Components
-              and Maqam.vst3 to ~/Library/Audio/Plug-Ins/VST3,
-              then in Terminal run:
-              xattr -dr com.apple.quarantine ~/Library/Audio/Plug-Ins/Components/Maqam.component ~/Library/Audio/Plug-Ins/VST3/Maqam.vst3
+  If macOS says it "cannot be opened" (the plugin is not signed by Apple):
+  right-click "Install Maqam.pkg" > Open > Open.
+  Or go to System Settings > Privacy & Security and click "Open Anyway".
 
 USE
   Logic Pro : Software Instrument track > MIDI FX slot > Audio Units > Maqam Tools > Maqam
