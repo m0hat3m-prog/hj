@@ -190,7 +190,7 @@ inline juce::String intervalLabel (int cents)
     int whole = quarters / 4, rem = quarters % 4;
     static const char* frac[] = { "", "\xc2\xbc", "\xc2\xbd", "\xc2\xbe" };
     juce::String s = whole > 0 ? juce::String (whole) : juce::String();
-    s += juce::CharPointer_UTF8 (frac[rem]);
+    s += juce::String (juce::CharPointer_UTF8 (frac[rem]));
     return s.isEmpty() ? "0" : s;
 }
 } // namespace maqam
