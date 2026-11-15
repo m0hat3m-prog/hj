@@ -1,0 +1,21 @@
+MAQAM - quarter-tone maqam MIDI plugin (AU + VST3)
+
+INSTALL
+  Right-click "Install-Maqam.command" > Open > Open.
+  (Right-click is needed the first time because the plugin is not signed by Apple.)
+
+  Or by hand: copy Maqam.component to ~/Library/Audio/Plug-Ins/Components
+              and Maqam.vst3 to ~/Library/Audio/Plug-Ins/VST3,
+              then in Terminal run:
+              xattr -dr com.apple.quarantine ~/Library/Audio/Plug-Ins/Components/Maqam.component ~/Library/Audio/Plug-Ins/VST3/Maqam.vst3
+
+USE
+  Logic Pro : Software Instrument track > MIDI FX slot > Audio Units > Maqam Tools > Maqam
+  FL Studio : add Maqam (VST3) to the Channel Rack, set a MIDI output port in its wrapper,
+              and set the same port as the input port of your synth.
+  Ableton   : Live doesn't pass MIDI out of plugins. Use the plugin's "Export .scl" button
+              and load the file in Live 12's tuning system or in your synth.
+
+OUTPUT MODES
+  MPE   : turn on MPE in your synth (bend range 48). Chords stay in tune.
+  Mono  : works with any synth. Set the synth's bend range to 2. One note at a time.
