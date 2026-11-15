@@ -21,15 +21,79 @@ jobs:
           cmake -B build -G Xcode -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64"
           cmake --build build --config Release --target Maqam_AU Maqam_VST3 -- -quiet
 
-      - name: Make DMG
+      - name: Make installer package
         run: |
           ART=build/Maqam_artefacts/Release
+          mkdir -p pkgroot/au pkgroot/vst3 scripts res
+          cp -R "$ART/AU/Maqam.component" pkgroot/au/
+          cp -R "$ART/VST3/Maqam.vst3" pkgroot/vst3/
+          codesign --force --deep --sign - pkgroot/au/Maqam.component pkgroot/vst3/Maqam.vst3
+
+          printf '#!/bin/bash\nkillall -9 AudioComponentRegistrar 2>/dev/null\nexit 0\n' > scripts/postinstall
+          chmod +x scripts/postinstall
+
+          for kind in au vst3; do
+            pkgbuild --analyze --root pkgroot/$kind $kind.plist
+            plutil -replace 0.BundleIsRelocatable -bool NO $kind.plist
+          done
+          pkgbuild --root pkgroot/au --component-plist au.plist --scripts scripts \
+            --identifier com.maqamtools.maqam.au --version 1.0.0 \
+            --install-location /Library/Audio/Plug-Ins/Components Maqam-AU.pkg
+          pkgbuild --root pkgroot/vst3 --component-plist vst3.plist \
+            --identifier com.maqamtools.maqam.vst3 --version 1.0.0 \
+            --install-location /Library/Audio/Plug-Ins/VST3 Maqam-VST3.pkg
+
+          cat > res/welcome.txt <<'EOF'
+          Maqam - quarter-tone maqam MIDI plugin
+
+          This installs the Maqam MIDI effect for all your DAWs:
+            - Audio Unit (Logic Pro, GarageBand)
+            - VST3 (FL Studio, Reaper, Bitwig, Cubase...)
+
+          Put Maqam in front of any instrument. It turns what you play into one of
+          20 maqamat (Rast, Bayati, Sikah, Hijaz, Saba, Nahawand, Kurd, Ajam...)
+          with real quarter tones, using MPE or pitch-bend.
+          EOF
+          cat > res/conclusion.txt <<'EOF'
+          Maqam is installed.
+
+          Restart your DAW, then:
+            Logic Pro : Software Instrument track > MIDI FX slot > Audio Units > Maqam Tools > Maqam
+            FL Studio : add Maqam (VST3) to the Channel Rack, set a MIDI output port in its wrapper,
+                        and set the same port as the input port of your synth.
+
+          Output modes:
+            MPE  - turn on MPE in your synth (bend range 48). Chords stay in tune.
+            Mono - works with any synth. Set its pitch-bend range to 2. One note at a time.
+          EOF
+          sed -i '' 's/^          //' res/welcome.txt res/conclusion.txt
+
+          cat > distribution.xml <<'EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <installer-gui-script minSpecVersion="2">
+            <title>Maqam</title>
+            <welcome file="welcome.txt" mime-type="text/plain"/>
+            <conclusion file="conclusion.txt" mime-type="text/plain"/>
+            <options customize="always" require-scripts="false" hostArchitectures="arm64,x86_64"/>
+            <domains enable_localSystem="true"/>
+            <choices-outline>
+              <line choice="au"/>
+              <line choice="vst3"/>
+            </choices-outline>
+            <choice id="au" title="Audio Unit (Logic Pro, GarageBand)" description="Installs Maqam.component to /Library/Audio/Plug-Ins/Components">
+              <pkg-ref id="com.maqamtools.maqam.au"/>
+            </choice>
+            <choice id="vst3" title="VST3 (FL Studio, Reaper, Bitwig...)" description="Installs Maqam.vst3 to /Library/Audio/Plug-Ins/VST3">
+              <pkg-ref id="com.maqamtools.maqam.vst3"/>
+            </choice>
+            <pkg-ref id="com.maqamtools.maqam.au" version="1.0.0">Maqam-AU.pkg</pkg-ref>
+            <pkg-ref id="com.maqamtools.maqam.vst3" version="1.0.0">Maqam-VST3.pkg</pkg-ref>
+          </installer-gui-script>
+          EOF
+          sed -i '' 's/^          //' distribution.xml
+
           mkdir -p dmg
-          cp -R "$ART/AU/Maqam.component" dmg/
-          cp -R "$ART/VST3/Maqam.vst3" dmg/
-          codesign --force --deep --sign - dmg/Maqam.component dmg/Maqam.vst3
-          cp packaging/Install-Maqam.command dmg/
-          chmod +x dmg/Install-Maqam.command
+          productbuild --distribution distribution.xml --resources res --package-path . "dmg/Install Maqam.pkg"
           cp packaging/READ-ME-FIRST.txt dmg/
           hdiutil create -volname "Maqam" -srcfolder dmg -ov -format UDZO Maqam.dmg
 
@@ -43,4 +107,4 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release delete latest --yes --cleanup-tag || true
-          gh release create latest Maqam.dmg --title "Maqam plugin (latest build)" --notes "AU + VST3, Apple Silicon and Intel."
+          gh release create latest Maqam.dmg --title "Maqam plugin (latest build)" --notes "Double-click 'Install Maqam.pkg'. AU + VST3, Apple Silicon and Intel."
