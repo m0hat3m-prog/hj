@@ -1,0 +1,46 @@
+name: Build Maqam DMG
+
+on:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Get JUCE
+        run: git clone --depth 1 --branch 9.0.5 https://github.com/juce-framework/JUCE.git JUCE
+
+      - name: Build AU + VST3 (Apple Silicon + Intel)
+        run: |
+          cmake -B build -G Xcode -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64"
+          cmake --build build --config Release --target Maqam_AU Maqam_VST3 -- -quiet
+
+      - name: Make DMG
+        run: |
+          ART=build/Maqam_artefacts/Release
+          mkdir -p dmg
+          cp -R "$ART/AU/Maqam.component" dmg/
+          cp -R "$ART/VST3/Maqam.vst3" dmg/
+          codesign --force --deep --sign - dmg/Maqam.component dmg/Maqam.vst3
+          cp packaging/Install-Maqam.command dmg/
+          chmod +x dmg/Install-Maqam.command
+          cp packaging/READ-ME-FIRST.txt dmg/
+          hdiutil create -volname "Maqam" -srcfolder dmg -ov -format UDZO Maqam.dmg
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Maqam-dmg
+          path: Maqam.dmg
+
+      - name: Publish as release "latest"
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete latest --yes --cleanup-tag || true
+          gh release create latest Maqam.dmg --title "Maqam plugin (latest build)" --notes "AU + VST3, Apple Silicon and Intel."
